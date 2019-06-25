@@ -10,6 +10,7 @@ import FragmentLoader, { FragLoadSuccessResult, FragmentLoadProgressCallback } f
 import * as LevelHelper from './level-helper';
 import { TransmuxIdentifier } from '../types/transmuxer';
 import { appendUint8Array } from '../utils/mp4-tools';
+import { RemuxedTrack } from '../types/remuxer';
 
 export const State = {
   STOPPED: 'STOPPED',
@@ -276,12 +277,12 @@ export default class BaseStreamController extends TaskLoop {
   }
 
   // TODO: Emit moof+mdat as a single Uint8 instead of data1 & data2
-  protected bufferFragmentData (data, parent) {
+  protected bufferFragmentData (data: RemuxedTrack, parent) {
     if (!data || this.state !== State.PARSING) {
       return;
     }
 
-    const { data1, data2 } = data;
+    const { data1, data2, startPTS, endPTS } = data;
     let buffer = data1;
     if (data1 && data2) {
       // Combine the moof + mdat so that we buffer with a single append
@@ -292,7 +293,10 @@ export default class BaseStreamController extends TaskLoop {
       return;
     }
 
-    this.hls.trigger(Event.BUFFER_APPENDING, { type: data.type, data: buffer, parent, content: 'data' });
+    this.hls.trigger(
+      Event.BUFFER_APPENDING, //e
+      { type: data.type, startPTS, endPTS, data: buffer, parent, content: 'data' } //data
+      );
     this.tick();
   }
 
